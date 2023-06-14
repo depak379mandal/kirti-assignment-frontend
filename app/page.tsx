@@ -147,7 +147,7 @@ export default function Home() {
           }}
         >
           {books.books.map((book) => (
-            <Grid key={book.id} item xs={2} p={1}>
+            <Grid key={book.id} item xs={12} md={3} lg={2} p={1}>
               <Card elevation={3}>
                 <CardContent sx={{ textAlign: "center", p: 0 }}>
                   <img
@@ -158,6 +158,9 @@ export default function Home() {
                   />
                   <Typography fontSize="small">{book.writer}</Typography>
                   <Typography fontSize="small">{book.title}</Typography>
+                  <Typography>
+                    {book.tags.map((tag) => `#${tag}`).join(", ")}
+                  </Typography>
                   <Typography>Points {book.price}</Typography>
                 </CardContent>
                 <CardActions>
