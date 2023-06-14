@@ -1,95 +1,180 @@
-import Image from 'next/image'
-import styles from './page.module.css'
+/* eslint-disable @next/next/no-img-element */
+"use client";
+import client, { AuthClient } from "@/utils/client";
+import {
+  Typography,
+  Grid,
+  Card,
+  CardContent,
+  CardActions,
+  Button,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogActions,
+} from "@mui/material";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import InfiniteScroll from "react-infinite-scroll-component";
+import { toast } from "react-toastify";
+
+export interface IBook {
+  id: string;
+  title: string;
+  writer: string;
+  price: number;
+  image: string;
+  tags: string[];
+}
+
+const BookBuyModal = ({
+  data,
+  onClose,
+}: {
+  data: IBook | null;
+  onClose: () => void;
+}) => {
+  const [buying, setBuying] = useState(false);
+
+  const buyBook = () => {
+    setBuying(true);
+    AuthClient()
+      .post(`/v1/orders`, { book_id: data?.id })
+      .then(({ data }) => {
+        setBuying(false);
+        onClose();
+        toast.success(`Buy was success. order id is ${data.id}`);
+      })
+      .catch((res) => {
+        console.error(res);
+        toast.error("May be You are out of point.");
+        setBuying(false);
+      });
+  };
+
+  return (
+    <Dialog open={!!data} onClose={onClose}>
+      <DialogTitle>Are You Sure</DialogTitle>
+      <DialogContent>
+        It will decrease point by {data?.price} and buy the book
+      </DialogContent>
+      <DialogActions>
+        <Button color="error" variant="contained" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button variant="contained" disabled={buying} onClick={buyBook}>
+          {buying ? "Buying" : "Buy"}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
 
 export default function Home() {
+  const router = useRouter();
+
+  const [books, setBooks] = useState<{
+    page: number;
+    books: IBook[];
+    hasMore: boolean;
+  }>({
+    page: 0,
+    books: [],
+    hasMore: true,
+  });
+  const [user, setUser] = useState<any>({});
+  const [activeBuy, setActiveBuy] = useState<IBook | null>(null);
+
+  const getBooks = () => {
+    client
+      .get(`/v1/books?page=${books.page + 1}&limit=12`)
+      .then(({ data }) => {
+        setBooks((prev) => ({
+          page: data.page,
+          hasMore: !!data.rows.length,
+          books: [...prev.books, ...data.rows],
+        }));
+      })
+      .catch((res) => {
+        console.error(res);
+      });
+  };
+
+  const getUser = () => {
+    AuthClient()
+      .get(`/v1/user/me`)
+      .then(({ data }) => {
+        setUser(data);
+      })
+      .catch((res) => {
+        console.error(res);
+      });
+  };
+
+  useEffect(() => {
+    const auth_token = localStorage.getItem("auth_token");
+    if (!auth_token) {
+      router.push("/login");
+      return;
+    }
+
+    getBooks();
+  }, []);
+
+  useEffect(() => {
+    getUser();
+  }, [activeBuy]);
+
   return (
-    <main className={styles.main}>
-      <div className={styles.description}>
-        <p>
-          Get started by editing&nbsp;
-          <code className={styles.code}>app/page.tsx</code>
-        </p>
-        <div>
-          <a
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className={styles.vercelLogo}
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
-
-      <div className={styles.center}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className={styles.grid}>
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
+    <>
+      <Typography variant="h2" sx={{ textAlign: "center" }}>
+        All Books (Left Points {user.points})
+      </Typography>
+      <Grid container spacing={2} mt={4}>
+        <InfiniteScroll
+          dataLength={books.books.length} //This is important field to render the next data
+          next={getBooks}
+          hasMore={books.hasMore}
+          loader={<h4>Loading...</h4>}
+          endMessage={
+            <p style={{ textAlign: "center" }}>
+              <b>Yay! You have seen it all</b>
+            </p>
+          }
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+          }}
         >
-          <h2>
-            Docs <span>-&gt;</span>
-          </h2>
-          <p>Find in-depth information about Next.js features and API.</p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Learn <span>-&gt;</span>
-          </h2>
-          <p>Learn about Next.js in an interactive course with&nbsp;quizzes!</p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Templates <span>-&gt;</span>
-          </h2>
-          <p>Explore the Next.js 13 playground.</p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Deploy <span>-&gt;</span>
-          </h2>
-          <p>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
-  )
+          {books.books.map((book) => (
+            <Grid key={book.id} item xs={2} p={1}>
+              <Card elevation={3}>
+                <CardContent sx={{ textAlign: "center", p: 0 }}>
+                  <img
+                    src={book.image}
+                    style={{ objectFit: "cover" }}
+                    height={200}
+                    alt="Something"
+                  />
+                  <Typography fontSize="small">{book.writer}</Typography>
+                  <Typography fontSize="small">{book.title}</Typography>
+                  <Typography>Points {book.price}</Typography>
+                </CardContent>
+                <CardActions>
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    onClick={() => setActiveBuy(book)}
+                  >
+                    Buy Now
+                  </Button>
+                </CardActions>
+              </Card>
+            </Grid>
+          ))}
+        </InfiniteScroll>
+      </Grid>
+      <BookBuyModal data={activeBuy} onClose={() => setActiveBuy(null)} />
+    </>
+  );
 }
